@@ -1,0 +1,510 @@
+<style>
+  /* FOOTER STYLES - MOBILE OPTIMIZED */
+.footer {
+    background: linear-gradient(135deg, #002d5a 0%, #003d7a 100%);
+    color: white;
+    margin-top: 80px;
+    padding: 50px 20px 20px;
+    width: 100%;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 40px;
+    margin-bottom: 40px;
+}
+
+.footer-section {
+    padding: 0 10px;
+}
+
+.footer-section h4 {
+    font-size: 18px;
+    margin-bottom: 20px;
+    color: white;
+    font-weight: 600;
+}
+
+.footer-brand {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.footer-logo {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+}
+
+.footer-brand h3 {
+    font-size: 22px;
+    font-weight: 700;
+    color: white;
+    margin: 8px 0 4px 0;
+}
+
+.footer-brand p {
+    font-size: 14px;
+    color: #20a898;
+    font-weight: 500;
+    margin: 0;
+}
+
+.footer-tagline {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    line-height: 1.7;
+    margin-top: 12px;
+}
+
+.footer-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-links li {
+    margin-bottom: 12px;
+}
+
+.footer-links a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.footer-links a:hover {
+    color: #20a898;
+    transform: translateX(5px);
+}
+
+.footer-contact {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-contact li {
+    margin-bottom: 14px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.7;
+    word-break: break-word;
+}
+
+.footer-link {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.footer-link:hover {
+    color: #20a898 !important;
+}
+
+.footer-social {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.social-icon {
+    width: 45px;
+    height: 45px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.social-icon:hover,
+.social-icon:active {
+    background: #20a898;
+    transform: translateY(-5px) scale(1.1);
+    box-shadow: 0 6px 20px rgba(32, 168, 152, 0.5);
+    border-color: #20a898;
+}
+
+.footer-bottom {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-top: 30px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    text-align: center;
+}
+
+.footer-legal-links {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    line-height: 1.8;
+}
+
+.footer-legal-links a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.3s ease;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.footer-legal-links a:hover,
+.footer-legal-links a:active {
+    color: #20a898;
+    background: rgba(32, 168, 152, 0.1);
+}
+
+.separator {
+    color: rgba(255, 255, 255, 0.5);
+    user-select: none;
+}
+
+.footer-copyright {
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 12px 0;
+    line-height: 1.6;
+}
+
+.footer-bottom strong {
+    color: #20a898;
+    font-weight: 600;
+}
+
+.footer-disclaimer {
+    font-size: 12px !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    margin-top: 20px !important;
+    font-style: italic;
+    max-width: 900px;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    padding: 0 20px;
+    line-height: 1.8 !important;
+    text-align: center;
+}
+
+.footer-disclaimer a {
+    color: #20a898;
+    text-decoration: underline;
+    transition: color 0.3s ease;
+}
+
+.footer-disclaimer a:hover,
+.footer-disclaimer a:active {
+    color: #1a8a7a;
+}
+
+/* ========================================== */
+/* TABLET OPTIMIZATION (481px - 768px) */
+/* ========================================== */
+@media (max-width: 768px) and (min-width: 481px) {
+    .footer {
+        margin-top: 60px;
+        padding: 40px 20px 20px;
+    }
+
+    .footer-content {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 35px;
+    }
+
+    .footer-section h4 {
+        font-size: 17px;
+    }
+
+    .footer-brand h3 {
+        font-size: 20px;
+    }
+
+    .footer-legal-links {
+        font-size: 12px;
+        gap: 8px;
+    }
+
+    .footer-copyright {
+        font-size: 13px;
+    }
+
+    .footer-disclaimer {
+        font-size: 11px !important;
+        padding: 0 15px;
+    }
+}
+
+/* ========================================== */
+/* MOBILE OPTIMIZATION (Max 480px) */
+/* ========================================== */
+@media (max-width: 480px) {
+    .footer {
+        margin-top: 40px;
+        padding: 35px 15px 15px;
+    }
+
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 30px;
+    }
+
+    .footer-section {
+        text-align: center;
+        padding: 0;
+    }
+
+    .footer-section h4 {
+        font-size: 16px;
+        margin-bottom: 16px;
+    }
+
+    .footer-brand {
+        align-items: center;
+    }
+
+    .footer-logo {
+        width: 50px;
+        height: 50px;
+    }
+
+    .footer-brand h3 {
+        font-size: 18px;
+    }
+
+    .footer-brand p {
+        font-size: 13px;
+    }
+
+    .footer-tagline {
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .footer-links a {
+        font-size: 13px;
+    }
+
+    .footer-links a:hover {
+        transform: translateX(0);
+    }
+
+    .footer-contact li {
+        font-size: 13px;
+        margin-bottom: 12px;
+    }
+
+    .footer-social {
+        justify-content: center;
+        gap: 10px;
+    }
+
+    .social-icon {
+        width: 42px;
+        height: 42px;
+        font-size: 20px;
+    }
+
+    .social-icon:hover,
+    .social-icon:active {
+        transform: scale(1.1);
+    }
+
+    .footer-bottom {
+        padding-top: 25px;
+    }
+
+    .footer-legal-links {
+        font-size: 11px;
+        gap: 6px;
+        line-height: 2;
+    }
+
+    .footer-legal-links a {
+        padding: 3px 6px;
+    }
+
+    .separator {
+        display: none;
+    }
+
+    .footer-legal-links a::after {
+        content: " •";
+        color: rgba(255, 255, 255, 0.5);
+        margin-left: 6px;
+    }
+
+    .footer-legal-links a:last-child::after {
+        content: "";
+    }
+
+    .footer-copyright {
+        font-size: 12px;
+        margin: 10px 0;
+        line-height: 1.7;
+    }
+
+    .footer-disclaimer {
+        font-size: 10px !important;
+        padding: 0 10px;
+        line-height: 1.7 !important;
+        margin-top: 16px !important;
+    }
+}
+
+/* ========================================== */
+/* EXTRA SMALL DEVICES (Max 360px) */
+/* ========================================== */
+@media (max-width: 360px) {
+    .footer {
+        padding: 30px 12px 12px;
+    }
+
+    .footer-brand h3 {
+        font-size: 16px;
+    }
+
+    .footer-brand p {
+        font-size: 12px;
+    }
+
+    .footer-tagline {
+        font-size: 12px;
+    }
+
+    .footer-section h4 {
+        font-size: 15px;
+    }
+
+    .footer-links a,
+    .footer-contact li {
+        font-size: 12px;
+    }
+
+    .social-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 18px;
+    }
+
+    .footer-legal-links {
+        font-size: 10px;
+    }
+
+    .footer-copyright {
+        font-size: 11px;
+    }
+
+    .footer-disclaimer {
+        font-size: 9px !important;
+    }
+}
+
+/* ========================================== */
+/* TOUCH DEVICE ENHANCEMENTS */
+/* ========================================== */
+@media (hover: none) and (pointer: coarse) {
+    .footer-links a,
+    .social-icon,
+    .footer-legal-links a,
+    .footer-disclaimer a {
+        -webkit-tap-highlight-color: rgba(32, 168, 152, 0.2);
+        tap-highlight-color: rgba(32, 168, 152, 0.2);
+    }
+
+    .social-icon:active {
+        transform: scale(0.95);
+    }
+
+    .footer-links a:active {
+        color: #20a898;
+    }
+}
+
+/* ========================================== */
+/* HIGH DPI SCREENS */
+/* ========================================== */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .footer-logo {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+</style>
+
+<footer class="footer">
+  <footer class="footer">
+    <div class="footer-content">
+        <div class="footer-section">
+            <div class="footer-brand">
+                <img src="https://1drv.ms/i/c/826b8959b90db501/IQRO47ecO2e6Q5djZO1lUu_VAQPSWxrqCe5-tcV4i8mFicg?width=1280&height=853" alt="Wellness Oracle" class="footer-logo">
+                <h3>WELLNESS ORACLE</h3>
+                <p>Master Your Wellness with AI</p>
+            </div>
+            <p class="footer-tagline">Health for All - Your AI-powered wellness companion providing instant, personalized health insights.</p>
+        </div>
+
+        <div class="footer-section">
+            <h4>Quick Links</h4>
+            <ul class="footer-links">
+                <li><a href="https://sites.google.com/view/wellness-oracle/about-us">About Us</a></li>
+                <li><a href="https://sites.google.com/view/wellness-oracle/features" target="_blank" rel="noopener">Features</a></li>
+                <li><a href="https://sites.google.com/view/wellness-oracle/privacy-policy" target="_blank" rel="noopener">Privacy Policy</a></li>
+                <li><a href="https://sites.google.com/view/wellness-oracle/terms-conditions" target="_blank" rel="noopener">Terms & Conditions</a></li>
+                <li><a href="https://sites.google.com/view/wellness-oracle/cookie-policy" target="_blank" rel="noopener">Cookie Policy</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-section">
+            <h4>Legal & Disclaimers</h4>
+            <ul class="footer-links">
+                <li><a href="https://sites.google.com/view/wellness-oracle/medical-disclaimer" target="_blank" rel="noopener">Medical Disclaimer</a></li>
+                <li><a href="https://sites.google.com/view/wellness-oracle/ai-chatbot-disclaimer" target="_blank" rel="noopener">AI Chatbot Disclaimer</a></li>
+            </ul>
+            <h4 style="margin-top: 24px;">Contact Us</h4>
+            <ul class="footer-contact">
+                <li>📧 <a href="/cdn-cgi/l/email-protection#f087959c9c9e9583839f8291939c95de9199b0979d91999cde939f9d" class="footer-link"><span class="__cf_email__" data-cfemail="3047555c5c5e5543435f4251535c551e515970575d51595c1e535f5d">[email&#160;protected]</span></a></li>
+                <li>📱 <a href="tel:+917376361961" class="footer-link">+91 73763 61961</a></li>
+                <li>📍 India</li>
+            </ul>
+        </div>
+
+        <div class="footer-section">
+            <h4>Follow Us</h4>
+            <div class="footer-social">
+                <a href="https://www.facebook.com/share/1CfpJPUuKQ/" target="_blank" rel="noopener" class="social-icon" title="Facebook" aria-label="Facebook">📘</a>
+                <a href="https://www.instagram.com/wellnessoracle.ai?igsh=czdheWtqc2x0ZTFk" target="_blank" rel="noopener" class="social-icon" title="Instagram" aria-label="Instagram">📸</a>
+                <a href="https://x.com/WOracleAI" target="_blank" rel="noopener" class="social-icon" title="Twitter" aria-label="Twitter">🐦</a>
+                <a href="https://linkedin.com/in/wellness-oracle-ai" target="_blank" rel="noopener" class="social-icon" title="LinkedIn" aria-label="LinkedIn">💼</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <div class="footer-legal-links">
+            <a href="https://sites.google.com/view/wellness-oracle/privacy-policy" target="_blank" rel="noopener">Privacy</a>
+            <span class="separator">•</span>
+            <a href="https://sites.google.com/view/wellness-oracle/terms-conditions" target="_blank" rel="noopener">Terms</a>
+            <span class="separator">•</span>
+            <a href="https://sites.google.com/view/wellness-oracle/medical-disclaimer" target="_blank" rel="noopener">Medical Disclaimer</a>
+            <span class="separator">•</span>
+            <a href="https://sites.google.com/view/wellness-oracle/cookie-policy" target="_blank" rel="noopener">Cookies</a>
+            <span class="separator">•</span>
+            <a href="https://sites.google.com/view/wellness-oracle/ai-chatbot-disclaimer" target="_blank" rel="noopener">AI Disclaimer</a>
+        </div>
+        <p class="footer-copyright">&copy; 2026 Wellness Oracle. All rights reserved.</p>
+        <p class="footer-disclaimer">⚠️ <strong>Important:</strong> This AI chatbot provides general wellness information only and is not a substitute for professional medical advice, diagnosis, or treatment. Always consult qualified healthcare professionals for medical concerns. By using this service, you agree to our <a href="https://sites.google.com/view/wellness-oracle/terms-conditions" target="_blank">Terms & Conditions</a> an
