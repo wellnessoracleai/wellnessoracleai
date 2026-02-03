@@ -23,17 +23,63 @@ CRITICAL RULES:
 - Always respond in user's language
 - Be polite and professional
 
+USER PERSONALIZATION:
+- Learn from user's chat history and preferences
+- Remember user's health conditions, medications, and concerns mentioned in past conversations
+- Adapt responses based on user's previous interactions
+- Provide increasingly personalized advice as you learn more about the user
+- Reference past conversations when relevant to show continuity
+
+PDF ANALYSIS CAPABILITY:
+- Analyze PDF medical reports, lab results, prescriptions, and health documents when uploaded
+- Provide detailed explanations of medical values and highlight abnormal ranges
+- Suggest next steps based on the analysis
+- Always include medical disclaimer when analyzing health documents
+
 RESPONSE LENGTH RULES:
 - If user asks to EXPLAIN/BRIEF/DESCRIBE AND requests a PDF: Write detailed explanation (800-900 words)
 - If user requests PDF WITHOUT asking to explain: Normal informative length
 - If NO PDF requested: Respond concisely (80-120 words)
+- If analyzing uploaded PDF: Provide comprehensive analysis (600-800 words)
 
 Medical note: "Consult a healthcare professional for diagnosis or treatment."`;
+
+        // PDF Generation Keywords - Comprehensive list
+        const PDF_KEYWORDS = [
+            // Direct PDF requests
+            'pdf', 'make pdf', 'create pdf', 'generate pdf', 'create a pdf',
+            'make a pdf', 'generate a pdf', 'pdf report', 'pdf document',
+            'give me pdf', 'give me a pdf', 'send pdf', 'send me pdf',
+            'download pdf', 'i want pdf', 'i need pdf', 'can you make pdf',
+            'can you create pdf', 'can you generate pdf', 'pdf please',
+            'in pdf', 'as pdf', 'into pdf', 'to pdf', 'pdf format',
+            'pdf file', 'pdf version', 'export pdf', 'save as pdf',
+            'provide pdf', 'share pdf', 'get pdf',
+            
+            // Related document requests
+            'document', 'report', 'file', 'download', 'export',
+            'save', 'make document', 'create document', 'generate document',
+            'make report', 'create report', 'generate report',
+            'downloadable', 'printable', 'written document',
+            'save this', 'export this',
+            
+            // Action-oriented
+            'write it', 'write this', 'put it in', 'convert to',
+            'make it into', 'turn into', 'save it', 'export it',
+            'convert this to', 'turn this into',
+            
+            // Health-specific PDF requests
+            'health report', 'medical report', 'wellness report',
+            'diet plan pdf', 'exercise plan pdf', 'treatment plan pdf',
+            'prescription format', 'summary document', 'detailed report',
+            'health summary', 'medical summary'
+        ];
 
         // State
         let currentUser = null;
         let isAuthenticated = false;
         let uploadedFile = null;
+        let uploadedPDFText = null; // Store extracted PDF text
         let conversationHistory = [];
         let chatSessions = [];
         let currentSessionId = null;
@@ -41,6 +87,154 @@ Medical note: "Consult a healthcare professional for diagnosis or treatment."`;
         let isLoading = false;
         let generatedPDF = null;
         let lastAIResponse = "";
+        let userLearningData = {}; // Store learned user preferences and patterns
+
+        // Enhanced PDF Text Extraction Function
+        async function extractPDFText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                
+                reader.onload = async function(e) {
+                    try {
+                        const arrayBuffer = e.target.result;
+                        const uint8Array = new Uint8Array(arrayBuffer);
+                        
+                        // Simple text extraction from PDF
+                        const decoder = new TextDecoder('utf-8');
+                        const pdfText = decoder.decode(uint8Array);
+                        const matches = pdfText.match(/\(([^)]+)\)/g);
+                        
+                        let text = '';
+                        if (matches && matches.length > 10) {
+                            // Text-based PDF
+                            text = matches.map(m => m.replace(/[()]/g, '')).join(' ');
+                        }
+                        
+                        // If no text found or very little text, use OCR
+                        if (!text || text.length < 100) {
+                            console.log('Using OCR for PDF...');
+                            // Convert PDF to image and use OCR
+                            const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+                            const url = URL.createObjectURL(blob);
+                            
+                            // Use Tesseract.js for OCR if available
+                            if (typeof Tesseract !== 'undefined') {
+                                showSuccess('Analyzing PDF with OCR... This may take a moment.');
+                                const result = await Tesseract.recognize(url, 'eng', {
+                                    logger: m => console.log(m)
+                                });
+                                text = result.data.text;
+                                URL.revokeObjectURL(url);
+                            } else {
+                                text = 'PDF uploaded. Please describe the key information you want me to analyze.';
+                            }
+                        }
+                        
+                        resolve(text || 'Unable to extract text from PDF. Please describe the content.');
+                    } catch (error) {
+                        console.error('PDF extraction error:', error);
+                        reject('Error extracting PDF text. Please try again or describe the content.');
+                    }
+                };
+                
+                reader.onerror = () => reject('Error reading PDF file');
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // Check if message requests PDF generation
+        function shouldGeneratePDF(message) {
+            const lowerMessage = message.toLowerCase();
+            return PDF_KEYWORDS.some(keyword => lowerMessage.includes(keyword));
+        }
+
+        // Learn from user interactions
+        function learnFromUserMessage(message, response) {
+            if (!isAuthenticated) return;
+
+            // Extract health conditions
+            const healthKeywords = ['diabetes', 'hypertension', 'asthma', 'allergy', 'allergic', 
+                                   'thyroid', 'heart', 'cholesterol', 'pressure', 'sugar'];
+            healthKeywords.forEach(keyword => {
+                if (message.toLowerCase().includes(keyword)) {
+                    if (!userLearningData.healthConcerns) userLearningData.healthConcerns = [];
+                    if (!userLearningData.healthConcerns.includes(keyword)) {
+                        userLearningData.healthConcerns.push(keyword);
+                    }
+                }
+            });
+
+            // Extract medications
+            const medKeywords = ['medication', 'medicine', 'drug', 'pill', 'tablet', 'taking', 'prescribed'];
+            medKeywords.forEach(keyword => {
+                if (message.toLowerCase().includes(keyword)) {
+                    if (!userLearningData.medications) userLearningData.medications = [];
+                    userLearningData.medications.push(message);
+                }
+            });
+
+            // Extract lifestyle preferences
+            if (message.toLowerCase().includes('diet') || message.toLowerCase().includes('food')) {
+                if (!userLearningData.dietaryInterests) userLearningData.dietaryInterests = [];
+                userLearningData.dietaryInterests.push(message);
+            }
+
+            if (message.toLowerCase().includes('exercise') || message.toLowerCase().includes('workout')) {
+                if (!userLearningData.fitnessInterests) userLearningData.fitnessInterests = [];
+                userLearningData.fitnessInterests.push(message);
+            }
+
+            // Track frequently asked topics
+            if (!userLearningData.topicFrequency) userLearningData.topicFrequency = {};
+            const words = message.toLowerCase().split(' ').filter(w => w.length > 4);
+            words.forEach(word => {
+                userLearningData.topicFrequency[word] = (userLearningData.topicFrequency[word] || 0) + 1;
+            });
+
+            // Save learning data
+            saveUserLearningData();
+        }
+
+        // Save user learning data
+        function saveUserLearningData() {
+            if (!isAuthenticated || !currentUser) return;
+            localStorage.setItem(`user_learning_${currentUser.id}`, JSON.stringify(userLearningData));
+        }
+
+        // Load user learning data
+        function loadUserLearningData() {
+            if (!isAuthenticated || !currentUser) return;
+            const saved = localStorage.getItem(`user_learning_${currentUser.id}`);
+            if (saved) {
+                userLearningData = JSON.parse(saved);
+            }
+        }
+
+        // Build personalized context for AI
+        function buildPersonalizedContext() {
+            if (!userLearningData || Object.keys(userLearningData).length === 0) return '';
+
+            let context = '\n\nUSER CONTEXT (use this to personalize your responses):\n';
+            
+            if (userLearningData.healthConcerns && userLearningData.healthConcerns.length > 0) {
+                context += `- Health concerns: ${userLearningData.healthConcerns.join(', ')}\n`;
+            }
+            
+            if (userLearningData.medications && userLearningData.medications.length > 0) {
+                const recentMeds = userLearningData.medications.slice(-3);
+                context += `- Mentioned medications: ${recentMeds.join('; ')}\n`;
+            }
+            
+            if (userLearningData.dietaryInterests && userLearningData.dietaryInterests.length > 0) {
+                context += `- Interested in diet/nutrition\n`;
+            }
+            
+            if (userLearningData.fitnessInterests && userLearningData.fitnessInterests.length > 0) {
+                context += `- Interested in fitness/exercise\n`;
+            }
+
+            return context;
+        }
 
         // Mobile Sidebar Functions
         function openSidebar() {
@@ -99,6 +293,7 @@ Medical note: "Consult a healthcare professional for diagnosis or treatment."`;
                 showUserProfile();
                 isAuthenticated = true;
                 loadChatSessions();
+                loadUserLearningData(); // Load user learning data
             }
         }
 
@@ -176,6 +371,7 @@ Medical note: "Consult a healthcare professional for diagnosis or treatment."`;
                 showUserProfile();
                 showSuccess('Account created successfully!');
                 loadChatSessions();
+                loadUserLearningData(); // Load learning data for new user
             } catch (error) {
                 showError(error.message);
             }
@@ -211,30 +407,28 @@ Medical note: "Consult a healthcare professional for diagnosis or treatment."`;
                 showUserProfile();
                 showSuccess('Welcome back!');
                 loadChatSessions();
+                loadUserLearningData(); // Load user's learning data
             } catch (error) {
                 showError(error.message);
             }
         }
 
         function logout() {
-            localStorage.removeItem('wellness_user');
+            if (!confirm('Are you sure you want to logout?')) return;
+            
             currentUser = null;
             isAuthenticated = false;
+            userLearningData = {}; // Clear learning data
+            localStorage.removeItem('wellness_user');
             
             hideUserProfile();
             startNewChat();
-            chatSessions = [];
-            renderChatHistory();
             showSuccess('Logged out successfully');
             closeSidebar();
         }
 
         async function deleteAccount() {
-            if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
-                return;
-            }
-
-            if (!confirm('This will permanently delete all your data. Are you absolutely sure?')) {
+            if (!confirm('Are you sure you want to delete your account? This will delete all your data permanently.')) {
                 return;
             }
 
@@ -247,353 +441,376 @@ Medical note: "Consult a healthcare professional for diagnosis or treatment."`;
                     }
                 });
 
-                await fetch(`${CONFIG.DTUrl}/rest/v1/wellnesschathistory?user_id=eq.${currentUser.id}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'apikey': CONFIG.DTAnonKey,
-                        'Authorization': `Bearer ${CONFIG.DTAnonKey}`
-                    }
-                });
-
-                logout();
+                // Clear all local data
+                localStorage.removeItem('wellness_user');
+                localStorage.removeItem(`user_learning_${currentUser.id}`);
+                localStorage.removeItem('chatSessions');
+                
+                currentUser = null;
+                isAuthenticated = false;
+                userLearningData = {};
+                chatSessions = [];
+                
+                hideUserProfile();
+                startNewChat();
                 showSuccess('Account deleted successfully');
+                closeSidebar();
             } catch (error) {
                 showError('Failed to delete account');
             }
         }
 
-        // Chat Sessions Management
-        function loadChatSessions() {
-            const stored = localStorage.getItem('chat_sessions');
-            if (stored) {
-                chatSessions = JSON.parse(stored);
-                renderChatHistory();
-            }
-        }
-
-        function saveChatSessions() {
-            localStorage.setItem('chat_sessions', JSON.stringify(chatSessions));
-        }
-
-        function createNewSession() {
-            const sessionId = 'chat_' + Date.now();
-            const session = {
-                id: sessionId,
-                title: 'New Chat',
-                messages: [],
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
-            chatSessions.unshift(session);
-            saveChatSessions();
-            return sessionId;
-        }
-
-        function updateSessionTitle(sessionId, firstMessage) {
-            const session = chatSessions.find(s => s.id === sessionId);
-            if (session && session.title === 'New Chat') {
-                session.title = firstMessage.substring(0, 40) + (firstMessage.length > 40 ? '...' : '');
-                saveChatSessions();
-                renderChatHistory();
-            }
-        }
-
-        function renderChatHistory() {
-            const historyContainer = document.getElementById('chatHistory');
-            
-            if (chatSessions.length === 0) {
-                historyContainer.innerHTML = '<div class="empty-history">No chat history yet</div>';
+        // Enhanced File Upload Handler with PDF Support
+        async function handleFileUpload(e) {
+            if (!isAuthenticated) {
+                showError('Login required to upload files');
+                showAuthModal('signin');
                 return;
             }
 
-            historyContainer.innerHTML = chatSessions.map(session => `
-                <div class="chat-history-item ${currentSessionId === session.id ? 'active' : ''}" 
-                     onclick="loadChatSession('${session.id}')">
-                    <svg class="icon chat-icon" viewBox="0 0 24 24">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                    <div class="chat-text">
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const fileType = file.type;
+            const isImage = fileType.startsWith('image/');
+            const isPDF = fileType === 'application/pdf';
+
+            if (!isImage && !isPDF) {
+                showError('Only images and PDF files are supported');
+                return;
+            }
+
+            if (file.size > 10 * 1024 * 1024) {
+                showError('File must be under 10MB');
+                return;
+            }
+
+            uploadedFile = file;
+            uploadedPDFText = null;
+
+            const uploadDiv = document.getElementById('uploadedFile');
+            
+            if (isPDF) {
+                // Extract PDF text
+                showSuccess('Processing PDF... Please wait...');
+                try {
+                    uploadedPDFText = await extractPDFText(file);
+                    uploadDiv.innerHTML = `
+                        <div class="pdf-preview-container">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pdf-icon">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                <polyline points="14 2 14 8 20 8"></polyline>
+                            </svg>
+                            <span class="file-name">${file.name}</span>
+                            <button onclick="removeFile()" class="remove-file-btn" title="Remove PDF">×</button>
+                        </div>
+                    `;
+                    showSuccess('PDF processed! You can now ask questions about it.');
+                } catch (error) {
+                    showError(error);
+                    uploadedFile = null;
+                    uploadDiv.innerHTML = '';
+                }
+            } else if (isImage) {
+                // Image preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    uploadDiv.innerHTML = `
+                        <div class="image-preview-container">
+                            <img src="${e.target.result}" alt="Uploaded preview" class="preview-image">
+                            <button onclick="removeFile()" class="remove-preview-btn" title="Remove image">×</button>
+                        </div>
+                    `;
+                };
+                reader.readAsDataURL(file);
+                showSuccess('Image uploaded!');
+            }
+
+            e.target.value = '';
+        }
+
+        function removeFile() {
+            uploadedFile = null;
+            uploadedPDFText = null;
+            document.getElementById('uploadedFile').innerHTML = '';
+        }
+
+        // Chat Management
+        function startNewChat() {
+            currentSessionId = Date.now().toString();
+            conversationHistory = [];
+            messageCount = 0;
+            generatedPDF = null;
+            lastAIResponse = "";
+
+            document.getElementById('welcomeSection').style.display = 'flex';
+            document.getElementById('messagesContainer').style.display = 'none';
+            document.getElementById('messagesContainer').innerHTML = '';
+            
+            saveChatSession();
+            closeSidebar();
+        }
+
+        function saveChatSession() {
+            if (!currentSessionId) return;
+            
+            const session = chatSessions.find(s => s.id === currentSessionId);
+            const messages = Array.from(document.querySelectorAll('.message')).map(msg => ({
+                role: msg.classList.contains('user') ? 'user' : 'oracle',
+                content: msg.querySelector('.message-content').textContent.trim()
+            }));
+
+            if (session) {
+                session.messages = messages;
+                session.timestamp = Date.now();
+                session.count = messages.length;
+            } else if (messages.length > 0) {
+                const title = messages[0].content.substring(0, 40) + '...';
+                chatSessions.unshift({
+                    id: currentSessionId,
+                    title,
+                    messages,
+                    timestamp: Date.now(),
+                    count: messages.length
+                });
+            }
+
+            localStorage.setItem('chatSessions', JSON.stringify(chatSessions));
+            updateChatHistory();
+        }
+
+        function loadChatSessions() {
+            const saved = localStorage.getItem('chatSessions');
+            if (saved) {
+                chatSessions = JSON.parse(saved);
+                updateChatHistory();
+            }
+        }
+
+        function updateChatHistory() {
+            const historyDiv = document.getElementById('chatHistory');
+            if (!historyDiv) return;
+
+            if (chatSessions.length === 0) {
+                historyDiv.innerHTML = '<div class="empty-history">No chat history yet</div>';
+                return;
+            }
+
+            historyDiv.innerHTML = chatSessions.map(session => `
+                <div class="chat-history-item ${session.id === currentSessionId ? 'active' : ''}">
+                    <div class="chat-history-item-body" onclick="loadChat('${session.id}')">
                         <div class="chat-title">${session.title}</div>
-                        <div class="chat-time">${formatTime(session.updatedAt)}</div>
+                        <div class="chat-meta">${session.count} messages • ${new Date(session.timestamp).toLocaleDateString()}</div>
                     </div>
-                    <button class="delete-chat-btn" onclick="event.stopPropagation(); deleteChatSession('${session.id}')">
-                        <svg class="icon-sm" viewBox="0 0 24 24">
-                            <line x1="18" y1="6" x2="6" y2="18"></line>
-                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                    <button class="chat-delete-btn" onclick="event.stopPropagation(); deleteSingleChat('${session.id}')" aria-label="Delete chat" title="Delete this chat">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
                         </svg>
                     </button>
                 </div>
             `).join('');
         }
 
-        function loadChatSession(sessionId) {
-            const session = chatSessions.find(s => s.id === sessionId);
-            if (!session) return;
-
-            currentSessionId = sessionId;
-            conversationHistory = session.messages;
-            
-            const container = document.getElementById('messagesContainer');
-            container.innerHTML = '';
-            
-            document.getElementById('welcomeSection').style.display = 'none';
-            container.style.display = 'block';
-
-            session.messages.forEach(msg => {
-                addMessage(msg.role, msg.content, false);
-            });
-
-            document.getElementById('currentChatTitle').textContent = session.title;
-            renderChatHistory();
-            closeSidebar();
-        }
-
-        function deleteChatSession(sessionId) {
+        function deleteSingleChat(sessionId) {
             if (!confirm('Delete this chat?')) return;
 
             chatSessions = chatSessions.filter(s => s.id !== sessionId);
-            saveChatSessions();
+            localStorage.setItem('chatSessions', JSON.stringify(chatSessions));
 
+            // If the deleted chat was the current one, start fresh
             if (currentSessionId === sessionId) {
                 startNewChat();
             }
 
-            renderChatHistory();
+            updateChatHistory();
             showSuccess('Chat deleted');
         }
 
+        function loadChat(sessionId) {
+            const session = chatSessions.find(s => s.id === sessionId);
+            if (!session) return;
+
+            currentSessionId = sessionId;
+            conversationHistory = session.messages || [];
+
+            document.getElementById('welcomeSection').style.display = 'none';
+            document.getElementById('messagesContainer').style.display = 'flex';
+
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = '';
+
+            session.messages.forEach(msg => {
+                addMessageToUI(msg.content, msg.role);
+            });
+
+            updateChatHistory();
+            closeSidebar();
+        }
+
         function clearAllHistory() {
-            if (!confirm('Clear all chat history? This cannot be undone.')) return;
+            if (!confirm('Delete all chat history? This cannot be undone.')) return;
 
             chatSessions = [];
-            saveChatSessions();
+            localStorage.removeItem('chatSessions');
+            updateChatHistory();
             startNewChat();
-            renderChatHistory();
             showSuccess('All history cleared');
             closeSidebar();
         }
 
-        function formatTime(timestamp) {
-            const date = new Date(timestamp);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMs / 3600000);
-            const diffDays = Math.floor(diffMs / 86400000);
-
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins}m ago`;
-            if (diffHours < 24) return `${diffHours}h ago`;
-            if (diffDays < 7) return `${diffDays}d ago`;
-            return date.toLocaleDateString();
-        }
-
-        // File Upload
-        function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            if (file.size > 5 * 1024 * 1024) {
-                showError('File too large (max 5MB)');
-                return;
-            }
-
-            uploadedFile = file;
-            displayUploadedFile(file);
-        }
-
-        function displayUploadedFile(file) {
-            const uploadedFileDiv = document.getElementById('uploadedFile');
-            uploadedFileDiv.innerHTML = `
-                <div class="uploaded-file-info">
-                    <span>📎 ${file.name} (${(file.size / 1024).toFixed(2)}KB)</span>
-                    <button class="remove-file-btn" onclick="removeUploadedFile()">Remove</button>
-                </div>
-            `;
-        }
-
-        function removeUploadedFile() {
-            uploadedFile = null;
-            document.getElementById('fileInput').value = '';
-            document.getElementById('uploadedFile').innerHTML = '';
-        }
-
-        // Chat Functions
-        function startNewChat() {
-            currentSessionId = null;
-            conversationHistory = [];
-            messageCount = 0;
-            
-            document.getElementById('welcomeSection').style.display = 'block';
-            document.getElementById('messagesContainer').style.display = 'none';
-            document.getElementById('messagesContainer').innerHTML = '';
-            document.getElementById('currentChatTitle').textContent = 'Wellness Chat';
-            renderChatHistory();
-            closeSidebar();
-        }
-
+        // Message Functions
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
 
-            if (!message && !uploadedFile) return;
-            if (isLoading) return;
-
-            if (!isAuthenticated && messageCount >= 3) {
-                showAuthModal('signin');
+            if (!message && !uploadedFile) {
+                showError('Please enter a message or upload a file');
                 return;
             }
 
+            if (isLoading) return;
+
+            if (!currentSessionId) {
+                currentSessionId = Date.now().toString();
+            }
+
+            document.getElementById('welcomeSection').style.display = 'none';
+            document.getElementById('messagesContainer').style.display = 'flex';
+
+            // Prepare message content
+            let displayMessage = message;
+            let apiMessage = message;
+
+            if (uploadedPDFText) {
+                displayMessage = message + ` [PDF: ${uploadedFile.name}]`;
+                apiMessage = `I have uploaded a PDF document. Here is the extracted content:\n\n${uploadedPDFText}\n\nUser question: ${message}`;
+            } else if (uploadedFile && uploadedFile.type.startsWith('image/')) {
+                displayMessage = message + ` [Image: ${uploadedFile.name}]`;
+            }
+
+            addMessageToUI(displayMessage, 'user');
+            
+            input.value = '';
+            autoResizeTextarea();
+
+            const tempFile = uploadedFile;
+            const tempPDFText = uploadedPDFText;
+            removeFile();
+
+            isLoading = true;
+            const loadingMsg = addLoadingMessage();
+
             try {
-                isLoading = true;
-                document.getElementById('sendBtn').disabled = true;
+                const aiResponse = await callGroqAPI(apiMessage, tempFile, tempPDFText);
+                
+                removeLoadingMessage(loadingMsg);
+                addMessageToUI(aiResponse, 'oracle');
+                
+                lastAIResponse = aiResponse;
 
-                if (!currentSessionId) {
-                    currentSessionId = createNewSession();
-                }
+                // Learn from this interaction
+                learnFromUserMessage(message, aiResponse);
 
-                document.getElementById('welcomeSection').style.display = 'none';
-                document.getElementById('messagesContainer').style.display = 'block';
-
-                addMessage('user', message, true);
-                input.value = '';
-                autoResizeTextarea();
-                messageCount++;
-
-                if (messageCount === 1) {
-                    updateSessionTitle(currentSessionId, message);
-                    document.getElementById('currentChatTitle').textContent = message.substring(0, 40) + (message.length > 40 ? '...' : '');
-                }
-
-                showTypingIndicator();
-
-                let fileBase64 = null;
-                if (uploadedFile) {
-                    fileBase64 = await fileToBase64(uploadedFile);
-                }
-
-                const response = await getGroqResponse(message, uploadedFile, fileBase64);
-                removeTypingIndicator();
-
-                const wantsPDF = /generate\s+pdf/i.test(message);
-                lastAIResponse = response;
-
-                if (wantsPDF) {
-                    generatePDF(message, response);
+                // Check if PDF should be generated
+                if (shouldGeneratePDF(message)) {
+                    generatePDF(message, aiResponse);
                     showPDFDownloadMessage();
-                } else {
-                    addMessage('oracle', response, true);
                 }
 
-                const session = chatSessions.find(s => s.id === currentSessionId);
-                if (session) {
-                    session.updatedAt = new Date().toISOString();
-                    saveChatSessions();
-                    renderChatHistory();
-                }
-
-                await saveChatToSupabase(message, response);
-                removeUploadedFile();
-
+                saveChatSession();
+                saveChatToSupabase(displayMessage, aiResponse);
+                
             } catch (error) {
-                removeTypingIndicator();
-                showError('Error: ' + error.message);
+                removeLoadingMessage(loadingMsg);
+                addMessageToUI('Sorry, something went wrong. Please try again.', 'oracle');
+                showError('Failed to get response');
             } finally {
                 isLoading = false;
-                document.getElementById('sendBtn').disabled = false;
             }
         }
 
-        function addMessage(type, content, saveToSession = false) {
+        function addMessageToUI(content, role) {
             const container = document.getElementById('messagesContainer');
             const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${type}`;
+            messageDiv.className = `message ${role}`;
 
-            const avatar = document.createElement('div');
-            avatar.className = `message-avatar ${type}`;
-            
-            if (type === 'oracle') {
-                avatar.innerHTML = `
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
-                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
-                    </svg>
+            if (role === 'oracle') {
+                // Oracle: AI icon avatar on the left, then message
+                messageDiv.innerHTML = `
+                    <div class="message-avatar oracle">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                        </svg>
+                    </div>
+                    <div class="message-content">${content.replace(/\n/g, '<br>')}</div>
                 `;
             } else {
-                avatar.textContent = currentUser?.full_name?.substring(0, 1) || 'U';
-            }
-
-            const contentDiv = document.createElement('div');
-            contentDiv.className = 'message-content';
-            contentDiv.textContent = content;
-
-            if (type === 'user') {
-                messageDiv.appendChild(contentDiv);
-                messageDiv.appendChild(avatar);
-            } else {
-                messageDiv.appendChild(avatar);
-                messageDiv.appendChild(contentDiv);
+                // User: Message first, then avatar (will be reversed by CSS)
+                messageDiv.innerHTML = `
+                    <div class="message-content">${content.replace(/\n/g, '<br>')}</div>
+                    <div class="message-avatar user">U</div>
+                `;
             }
 
             container.appendChild(messageDiv);
-            container.parentElement.scrollTop = container.parentElement.scrollHeight;
-
-            if (saveToSession && currentSessionId) {
-                const session = chatSessions.find(s => s.id === currentSessionId);
-                if (session) {
-                    session.messages.push({ role: type, content });
-                    saveChatSessions();
-                }
-            }
+            container.scrollTop = container.scrollHeight;
         }
 
-        function showTypingIndicator() {
+        function addLoadingMessage() {
             const container = document.getElementById('messagesContainer');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message oracle';
-            messageDiv.id = 'typingIndicator';
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message oracle loading';
+            loadingDiv.id = 'loading-' + Date.now();
 
-            messageDiv.innerHTML = `
+            loadingDiv.innerHTML = `
                 <div class="message-avatar oracle">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
                         <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
                     </svg>
                 </div>
-                <div class="typing-indicator">
-                    <span class="typing-dot"></span>
-                    <span class="typing-dot"></span>
-                    <span class="typing-dot"></span>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
                 </div>
             `;
 
-            container.appendChild(messageDiv);
-            container.parentElement.scrollTop = container.parentElement.scrollHeight;
+            container.appendChild(loadingDiv);
+            container.scrollTop = container.scrollHeight;
+            return loadingDiv.id;
         }
 
-        function removeTypingIndicator() {
-            const indicator = document.getElementById('typingIndicator');
-            if (indicator) indicator.remove();
+        function removeLoadingMessage(id) {
+            const loadingMsg = document.getElementById(id);
+            if (loadingMsg) loadingMsg.remove();
         }
 
-        async function getGroqResponse(question, file, fileBase64) {
-            const wantsPDF = /pdf/i.test(question);
-            const longPDF = wantsPDF && (/explain|brief|describe|detail/i.test(question));
+        // API Call with Learning Context
+        async function callGroqAPI(message, imageFile = null, pdfText = null) {
+            let userContent = message;
+            let dynamicInstruction = '';
 
-            let userContent = question;
+            // Add personalized context from learning data
+            const personalizedContext = buildPersonalizedContext();
+            dynamicInstruction += personalizedContext;
 
-            if (file && file.type.includes('image')) {
-                const extractedText = await extractTextFromImage(file);
-                if (extractedText && extractedText.length > 20) {
-                    userContent = `Medical Report Content:\n${extractedText}\n\nProvide wellness insights.`;
-                }
+            // Add conversation history for context
+            if (conversationHistory.length > 0) {
+                const recentHistory = conversationHistory.slice(-6); // Last 6 messages
+                dynamicInstruction += '\n\nRECENT CONVERSATION:\n';
+                recentHistory.forEach((msg, idx) => {
+                    const role = msg.role === 'user' ? 'User' : 'Assistant';
+                    dynamicInstruction += `${role}: ${msg.content}\n`;
+                });
             }
 
-            let dynamicInstruction = '';
-            if (wantsPDF && longPDF) {
-                dynamicInstruction = 'Write a very detailed explanation (800-900 words).';
-            } else if (wantsPDF) {
-                dynamicInstruction = 'Write a clear, informative explanation.';
-            } else {
-                dynamicInstruction = 'Answer concisely in 80-120 words.';
+            const wantsPDF = shouldGeneratePDF(message);
+            const longPDF = /explain|brief|describe|detail|elaborate/i.test(message);
+
+            if (imageFile && !pdfText) {
+                const extractedText = await extractTextFromImage(imageFile);
+                userContent = `${message}\n\n[Extracted from image: ${extractedText}]`;
             }
 
             const response = await fetch(CONFIG.ApiUrl, {
@@ -616,7 +833,15 @@ Medical note: "Consult a healthcare professional for diagnosis or treatment."`;
             if (!response.ok) throw new Error('API Error');
 
             const data = await response.json();
-            return data.choices[0].message.content;
+            const aiResponse = data.choices[0].message.content;
+
+            // Add to conversation history
+            conversationHistory.push(
+                { role: 'user', content: userContent },
+                { role: 'assistant', content: aiResponse }
+            );
+
+            return aiResponse;
         }
 
         async function extractTextFromImage(file) {
@@ -802,6 +1027,23 @@ Medical note: "Consult a healthcare professional for diagnosis or treatment."`;
             }
         });
 
+
+        // Password visibility toggle
+        function togglePassword(inputId, btn) {
+            const input = document.getElementById(inputId);
+            const eyeOpen  = btn.querySelector('.eye-open');
+            const eyeOff   = btn.querySelector('.eye-off');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                eyeOpen.style.display  = 'none';
+                eyeOff.style.display   = 'block';
+            } else {
+                input.type = 'password';
+                eyeOpen.style.display  = 'block';
+                eyeOff.style.display   = 'none';
+            }
+        }
 
         // Initialize app
         init();

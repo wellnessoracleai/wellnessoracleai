@@ -1,0 +1,40 @@
+/* ============================================
+   MESSAGE ALIGNMENT FIX
+   Add this CSS to ensure messages align correctly
+   ============================================ */
+
+/* Force user messages to the RIGHT */
+.message.user {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-end !important;
+    justify-content: flex-end !important;
+    width: 100% !important;
+    gap: 8px !important;
+}
+
+/* Force AI/Oracle messages to the LEFT */
+.message.oracle {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: flex-end !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    gap: 8px !important;
+}
+
+/* Ensure message content text is left-aligned inside bubble */
+.message-content {
+    text-align: left !important;
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+    .message.user {
+        justify-content: flex-end !important;
+    }
+    
+    .message.oracle {
+        justify-content: flex-start !important;
+    }
+}
